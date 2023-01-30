@@ -1,4 +1,3 @@
-
 CC = gcc
 
 all: mandel
@@ -11,3 +10,4 @@ run: mandel
 
 clear:
 	rm mandel
+	rm MandelbrotSet.bmp

@@ -1,12 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdint.h>
+#include <errno.h>
 
-#define WHITE   0x00000000
-#define BLUE    0xFF000000
+#define BLACK   0x00000000
+#define BLUE    0x0000FF00
 #define GREEN   0x00FF0000
-#define RED     0x0000FF00
-#define BLACK   0xFFFFFF00
+#define RED     0xFF000000
+#define WHITE   0xFFFFFF00
+
+#define XLOWER -2
+#define XUPPER  1
+#define YLOWER -1
+#define YUPPER  1
+
+#define WIDTH  1200
+#define HEIGHT  800
 
 #pragma pack(push, 1)
 // struct that holds all of the meta-data for the .bmp file provided
@@ -31,9 +41,19 @@ struct BMP_HEADER {
 };
 #pragma pack(pop)
 
+struct BMP_HEADER init_BMP_HEAD(int xpixels, int ypixels) {
+    struct BMP_HEADER head = {0};
 
-void init_BMP_HEAD(int width, int heigth, struct BMP_HEADER* head) {
-    
+    head.type = 0x4d42;
+    head.size = 4 * xpixels * ypixels + 138;
+    head.offset = 0x8a;
+    head.dib_header_size = 124;
+    head.width_px = xpixels;
+    head.height_px = ypixels;
+    head.num_planes = 1;
+    head.bits_per_pixel = 32;
+    head.image_size_bytes = 4 * xpixels * ypixels;
+    return head;
 }
 
 // For debugging purposes
@@ -59,6 +79,45 @@ void print_head(struct BMP_HEADER image_head) {
 }
 
 int main(int argc, char **argv) {
-    printf("Hello World\n");
+    FILE *fptr = fopen("MandelbrotSet.bmp", "wb+");
+
+    if (fptr == NULL) {
+        fprintf(stderr, "Error opening/creating file - (%d)\n", errno);
+        exit(1);
+    }
+
+    struct BMP_HEADER head = init_BMP_HEAD(WIDTH, HEIGHT);
+
+    if (!fwrite(&head, 54, 1, fptr)) {
+        fprintf(stderr, "Error writing header data to .bmp file - (%d)\n", errno);
+        exit(1);
+    }
+
+    fseek(fptr, head.offset - 1, SEEK_SET);
+
+    int *fractal = (int*)malloc(head.image_size_bytes);
+
+    if (fractal == NULL) {
+        fprintf(stderr, "Error allocating memory for the bmp image - (%d)\n", errno);
+        exit(1);
+    }
+
+    for (int h = 0; h < HEIGHT; ++h) {
+        for (int w = 0; w < WIDTH; ++w) {
+
+        }
+    }
+
+    for (int i = 0; i < head.image_size_bytes/4; ++i) {
+        *(fractal + i) = WHITE;
+    }
+
+    if (!fwrite(fractal, head.image_size_bytes, 1, fptr)) {
+        fprintf(stderr, "Error writing data to the bmp image - (%d)\n", errno);
+        exit(1);
+    }
+
+    printf("Complete :)\n");
+
     return 0;
 }
