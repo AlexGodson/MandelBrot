@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
@@ -10,13 +11,18 @@
 #define RED     0xFF000000
 #define WHITE   0xFFFFFF00
 
-#define XLOWER -2
-#define XUPPER  1
-#define YLOWER -1
-#define YUPPER  1
+#define XLOWER -2.0
+#define XUPPER  1.0
+#define YLOWER -1.0
+#define YUPPER  1.0
 
-#define WIDTH  1200
-#define HEIGHT  800
+#define WIDTH  2400
+#define HEIGHT 1600
+
+#define ITERATIONS 200
+
+#define IN 1
+#define OUT 0
 
 #pragma pack(push, 1)
 // struct that holds all of the meta-data for the .bmp file provided
@@ -78,6 +84,73 @@ void print_head(struct BMP_HEADER image_head) {
     printf("Image: important_colors: %d\n", image_head.important_colors);
 }
 
+struct complex_num {
+    double real;
+    double img;
+};
+
+struct complex_num mult_C(struct complex_num A, struct complex_num B) {
+    struct complex_num C;
+    C.real = A.real * B.real - A.img * B.img;
+    C.img = A.real * B.img + A.img * B.real;
+    return C;
+}
+
+struct complex_num sqr_C(struct complex_num A) {
+    struct complex_num C;
+    C.real = A.real * A.real - A.img * A.img;
+    C.img = 2 * A.real * A.img;
+    return C;
+}
+
+struct complex_num add_C(struct complex_num A, struct complex_num B) {
+    struct complex_num C;
+    C.real = A.real + B.real;
+    C.img = A.img + B.img;
+    return C;
+}
+
+struct complex_num minus_C(struct complex_num A, struct complex_num B) {
+    struct complex_num C;
+    C.real = A.real - B.real;
+    C.img = A.img - B.img;
+    return C;
+}
+
+struct complex_num sin_C(struct complex_num A) {
+    struct complex_num C;
+    C.real = sin(A.real) * cosh(A.img);
+    C.img = cos(A.real) * sinh(A.img);
+    return C;
+}
+
+int Mandelbrot_recurse(struct complex_num C) {
+    int count = 0;
+    struct complex_num C2 = C;
+    while (count < ITERATIONS) {
+        C2 = sqr_C(C2);
+        C2 = add_C(C2, C);
+        if (C2.real > XUPPER || C2.real < XLOWER || C2.img > YUPPER || C2.img < YLOWER) {
+            return OUT;
+        }
+        count++;
+    }
+    return IN;
+}
+
+int Mandelbrot_recurse_alt(struct complex_num C) {
+    int count = 0;
+    struct complex_num C2 = C;
+    while (count < ITERATIONS) {
+        C2 = mult_C(C2, sin_C(C2));
+        if (C2.real > 1 || C2.real < -2 || C2.img > 1 || C2.img < -1) {
+            return OUT;
+        }
+        count++;
+    }
+    return IN;
+}
+
 int main(int argc, char **argv) {
     FILE *fptr = fopen("MandelbrotSet.bmp", "wb+");
 
@@ -93,7 +166,10 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    fseek(fptr, head.offset - 1, SEEK_SET);
+    if (fseek(fptr, head.offset - 1, SEEK_SET) == -1) {
+        fprintf(stderr, "Error finding data offset in the bmp file - (%d)\n", errno);
+        exit(1);
+    }
 
     int *fractal = (int*)malloc(head.image_size_bytes);
 
@@ -102,14 +178,22 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+
+    double x_step = (XUPPER - XLOWER) / WIDTH;
+    double y_step = (YUPPER - YLOWER) / HEIGHT;
+
+    struct complex_num Z;
+
     for (int h = 0; h < HEIGHT; ++h) {
+        Z.img = h * y_step + YLOWER;
         for (int w = 0; w < WIDTH; ++w) {
-
+            Z.real = w * x_step + XLOWER;
+            if (Mandelbrot_recurse(Z)) {
+                *(fractal + (h * WIDTH + w)) = BLACK;
+            } else {
+                *(fractal + (h * WIDTH + w)) = WHITE;
+            }
         }
-    }
-
-    for (int i = 0; i < head.image_size_bytes/4; ++i) {
-        *(fractal + i) = WHITE;
     }
 
     if (!fwrite(fractal, head.image_size_bytes, 1, fptr)) {
