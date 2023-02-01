@@ -16,10 +16,10 @@
 #define YLOWER -1.0
 #define YUPPER  1.0
 
-#define WIDTH  2400
-#define HEIGHT 1600
+#define WIDTH  1200
+#define HEIGHT  800
 
-#define ITERATIONS 200
+#define ITERATIONS 100
 
 #define IN 1
 #define OUT 0
@@ -200,6 +200,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Error writing data to the bmp image - (%d)\n", errno);
         exit(1);
     }
+
+    free(fractal);
+
+    fclose(fptr);
 
     printf("Complete :)\n");
 
