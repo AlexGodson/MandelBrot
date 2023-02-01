@@ -3,7 +3,7 @@ CC = gcc
 all: mandel
 
 mandel: main.c
-	$(CC) -O3 main.c -o mandel -lm
+	$(CC) -Wall -Werror -O2 main.c -o mandel -lm
 
 run: mandel
 	./mandel

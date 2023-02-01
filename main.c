@@ -16,10 +16,8 @@
 #define YLOWER -1.0
 #define YUPPER  1.0
 
-#define WIDTH  1200
-#define HEIGHT  800
-
-#define ITERATIONS 100
+#define WIDTH  2400
+#define HEIGHT 1600
 
 #define IN 1
 #define OUT 0
@@ -85,73 +83,45 @@ void print_head(struct BMP_HEADER image_head) {
 }
 
 struct complex_num {
-    double real;
-    double img;
+    long double real;
+    long double img;
 };
 
-struct complex_num mult_C(struct complex_num A, struct complex_num B) {
-    struct complex_num C;
-    C.real = A.real * B.real - A.img * B.img;
-    C.img = A.real * B.img + A.img * B.real;
-    return C;
-}
-
-struct complex_num sqr_C(struct complex_num A) {
-    struct complex_num C;
-    C.real = A.real * A.real - A.img * A.img;
-    C.img = 2 * A.real * A.img;
-    return C;
-}
-
-struct complex_num add_C(struct complex_num A, struct complex_num B) {
-    struct complex_num C;
-    C.real = A.real + B.real;
-    C.img = A.img + B.img;
-    return C;
-}
-
-struct complex_num minus_C(struct complex_num A, struct complex_num B) {
-    struct complex_num C;
-    C.real = A.real - B.real;
-    C.img = A.img - B.img;
-    return C;
-}
-
-struct complex_num sin_C(struct complex_num A) {
-    struct complex_num C;
-    C.real = sin(A.real) * cosh(A.img);
-    C.img = cos(A.real) * sinh(A.img);
-    return C;
-}
-
-int Mandelbrot_recurse(struct complex_num C) {
+int Mandelbrot_recurse(struct complex_num Zn, int iters) {
     int count = 0;
-    struct complex_num C2 = C;
-    while (count < ITERATIONS) {
-        C2 = sqr_C(C2);
-        C2 = add_C(C2, C);
-        if (C2.real > XUPPER || C2.real < XLOWER || C2.img > YUPPER || C2.img < YLOWER) {
+    long double x0 = Zn.real;
+    long double y0 = Zn.img;
+    struct complex_num Zn1;
+    while (count < iters) {
+        // Re(Z n+1) = x^2 - y^2 + x0
+        // Im(Z n+1) = (x + x) * y + y0
+        Zn1.real = Zn.real * Zn.real - Zn.img * Zn.img + x0;
+        Zn1.img = (Zn.real + Zn.real) * Zn.img + y0;
+        
+        if (Zn1.real > XUPPER || Zn1.real < XLOWER || Zn1.img > YUPPER || Zn1.img < YLOWER) {
             return OUT;
         }
+
+        Zn = Zn1;
         count++;
     }
     return IN;
 }
 
-int Mandelbrot_recurse_alt(struct complex_num C) {
-    int count = 0;
-    struct complex_num C2 = C;
-    while (count < ITERATIONS) {
-        C2 = mult_C(C2, sin_C(C2));
-        if (C2.real > 1 || C2.real < -2 || C2.img > 1 || C2.img < -1) {
-            return OUT;
-        }
-        count++;
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        printf("Error: incorrect arguments passed to mandel file - Provided (%d), required (1)\n", (argc - 1));
+        exit(1);
     }
-    return IN;
-}
 
-int main(int argc, char **argv) {
+    char *iters_str = *(argv + 1);
+    int iters = atoi(iters_str);
+
+    if (iters > 2000) { 
+        printf("Error: too big a number for recursive iterations - (%d)\n", iters);
+        exit(1);
+    }
+
     FILE *fptr = fopen("MandelbrotSet.bmp", "wb+");
 
     if (fptr == NULL) {
@@ -179,8 +149,8 @@ int main(int argc, char **argv) {
     }
 
 
-    double x_step = (XUPPER - XLOWER) / WIDTH;
-    double y_step = (YUPPER - YLOWER) / HEIGHT;
+    long double x_step = (XUPPER - XLOWER) / WIDTH;
+    long double y_step = (YUPPER - YLOWER) / HEIGHT;
 
     struct complex_num Z;
 
@@ -188,7 +158,7 @@ int main(int argc, char **argv) {
         Z.img = h * y_step + YLOWER;
         for (int w = 0; w < WIDTH; ++w) {
             Z.real = w * x_step + XLOWER;
-            if (Mandelbrot_recurse(Z)) {
+            if (Mandelbrot_recurse(Z, iters) ) {
                 *(fractal + (h * WIDTH + w)) = BLACK;
             } else {
                 *(fractal + (h * WIDTH + w)) = WHITE;
