@@ -5,22 +5,19 @@
 #include <stdint.h>
 #include <errno.h>
 
-#define BLACK   0x00000000
-#define BLUE    0x0000FF00
-#define GREEN   0x00FF0000
-#define RED     0xFF000000
-#define WHITE   0xFFFFFF00
-
 #define XLOWER -2.0
 #define XUPPER  1.0
 #define YLOWER -1.0
 #define YUPPER  1.0
 
-#define WIDTH  2400
-#define HEIGHT 1600
+#define WIDTH  1200
+#define HEIGHT  800
 
-#define IN 1
-#define OUT 0
+uint32_t BLACK  = 0x00000000;
+uint32_t WHITE  = 0xFFFFFF00;
+uint32_t BLUE   = 0x0000FF00;
+uint32_t GREEN  = 0x00FF0000;
+uint32_t RED    = 0xFF000000;
 
 #pragma pack(push, 1)
 // struct that holds all of the meta-data for the .bmp file provided
@@ -83,14 +80,14 @@ void print_head(struct BMP_HEADER image_head) {
 }
 
 struct complex_num {
-    long double real;
-    long double img;
+    double real;
+    double img;
 };
 
-int Mandelbrot_recurse(struct complex_num Zn, int iters) {
+uint32_t Mandelbrot_recurse(struct complex_num Zn, int iters) {
     int count = 0;
-    long double x0 = Zn.real;
-    long double y0 = Zn.img;
+    double x0 = Zn.real;
+    double y0 = Zn.img;
     struct complex_num Zn1;
     while (count < iters) {
         // Re(Z n+1) = x^2 - y^2 + x0
@@ -99,13 +96,13 @@ int Mandelbrot_recurse(struct complex_num Zn, int iters) {
         Zn1.img = (Zn.real + Zn.real) * Zn.img + y0;
         
         if (Zn1.real > XUPPER || Zn1.real < XLOWER || Zn1.img > YUPPER || Zn1.img < YLOWER) {
-            return OUT;
+            return WHITE;
         }
 
         Zn = Zn1;
         count++;
     }
-    return IN;
+    return BLACK;
 }
 
 int main(int argc, char *argv[]) {
@@ -141,16 +138,15 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    int *fractal = (int*)malloc(head.image_size_bytes);
+    uint32_t *fractal = (uint32_t*)malloc(head.image_size_bytes);
 
     if (fractal == NULL) {
         fprintf(stderr, "Error allocating memory for the bmp image - (%d)\n", errno);
         exit(1);
     }
 
-
-    long double x_step = (XUPPER - XLOWER) / WIDTH;
-    long double y_step = (YUPPER - YLOWER) / HEIGHT;
+    double x_step = (XUPPER - XLOWER) / WIDTH;
+    double y_step = (YUPPER - YLOWER) / HEIGHT;
 
     struct complex_num Z;
 
@@ -158,11 +154,7 @@ int main(int argc, char *argv[]) {
         Z.img = h * y_step + YLOWER;
         for (int w = 0; w < WIDTH; ++w) {
             Z.real = w * x_step + XLOWER;
-            if (Mandelbrot_recurse(Z, iters) ) {
-                *(fractal + (h * WIDTH + w)) = BLACK;
-            } else {
-                *(fractal + (h * WIDTH + w)) = WHITE;
-            }
+            *(fractal + (h * WIDTH + w)) = Mandelbrot_recurse(Z, iters);
         }
     }
 
